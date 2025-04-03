@@ -166,13 +166,21 @@ EMAIL_PORT          =   587
 EMAIL_USE_TLS       =   True
 EMAIL_USE_SSL       =   False
 
+# Add the Celery broker URL (this example uses Redis)
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
 
+# Optionally, add a backend for task results if you need it
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
 
 CELERY_BEAT_SCHEDULE = {
     'auto-upload-social-media-posts': {
         'task': 'web.tasks.auto_upload_social_media_posts',  
         'schedule': 60.0,  # Run the task every 60 seconds
     },
+    'auto-create-social-media-posts': {
+        'task': 'web.tasks.auto_create_social_media_post',
+        'schedule': 300.0 
+    }
 }
 
 
@@ -233,6 +241,11 @@ UNFOLD = {
                         "title": "Social Media Accounts",
                         "icon": "share",  
                         "link": "/admin/web/socialmedia/",
+                    },
+                    {
+                        "title": "Video Script Generator",
+                        "icon": "camera",
+                        "link": "/admin/web/videoscriptgeneration/",
                     },
                     {
                         "title": "Post",

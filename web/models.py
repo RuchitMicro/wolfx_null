@@ -267,8 +267,6 @@ class Contact(CommonModel):
         )
 
 
-
-
 # ------------------------------------------------------------------------------
 # SocialMedia model stores social media account details.
 # ------------------------------------------------------------------------------
@@ -289,21 +287,67 @@ class SocialMedia(CommonModel):
     password          = models.CharField(max_length=300)
     link              = models.URLField(max_length=300, blank=True, null=True)
     description       = models.TextField(blank=True, null=True)
-    image             = models.ImageField(upload_to='social_media/')
+    image             = models.ImageField(upload_to='social_media/', blank=True, null=True)
+
+    default_llm_prompt = models.TextField(
+        blank=True, null=True, help_text='Default prompt for LLM to auto generate content specific to this account.'
+    )
 
     admin_meta = {
         'list_display': ['account_name', 'link', '__str__', 'created_at', 'updated_at', 'created_by', 'updated_by'],   
+        'inline': [
+            {'SocialMediaTimetable': 'social_media'},
+        ],
     }
 
     def __str__(self):
         # Return the account_name for readable representation.
         return str(self.account_name)
 
+
+# ------------------------------------------------------------------------------
+# SocialMediaTimetable model represents the recurring posting schedule for a SocialMedia account.
+# ------------------------------------------------------------------------------
+class SocialMediaTimetable(CommonModel):
+    # Define choices for days of the week (Monday=0, Sunday=6)
+    DAY_CHOICES = (
+        (0, 'Monday'),
+        (1, 'Tuesday'),
+        (2, 'Wednesday'),
+        (3, 'Thursday'),
+        (4, 'Friday'),
+        (5, 'Saturday'),
+        (6, 'Sunday'),
+    )
+    # Foreign key linking this schedule to a specific SocialMedia account.
+    social_media = models.ForeignKey(
+        SocialMedia, 
+        on_delete=models.CASCADE,
+        related_name='timetables'
+    )
+    # Day of week when the post should be published.
+    day_of_week = models.IntegerField(
+        choices = DAY_CHOICES, 
+        help_text = "Day of week when the post should be published"
+    )
+    # Time of day when the post should be published.
+    posting_time = models.TimeField(
+        help_text = "Time of day when the post should be published"
+    )
+    
+    class Meta:
+        unique_together = ('social_media', 'day_of_week', 'posting_time')
+    
+    def __str__(self):
+        # Return a string like "Instagram: Monday 09:00"
+        day_str = dict(self.DAY_CHOICES).get(self.day_of_week, "Unknown")
+        return f"{self.social_media.account_name}: {day_str} {self.posting_time.strftime('%H:%M')}"
+
+
 # ------------------------------------------------------------------------------
 # Post model holds details of a social media post.
 # ------------------------------------------------------------------------------
 class Post(CommonModel):
-    social_media = models.ForeignKey(SocialMedia, on_delete=models.CASCADE)
     type         = models.CharField(max_length=300, choices=[
         ('Image', 'Image'),
         ('Video', 'Video'),
@@ -320,12 +364,12 @@ class Post(CommonModel):
     is_published = models.BooleanField(default=False)
 
     admin_meta = {
-        'list_display': ['id', 'social_media', '__str__', 'created_at', 'updated_at', 'created_by', 'updated_by'],   
+        'list_display': ['__str__', 'created_at', 'updated_at', 'created_by', 'updated_by'],   
     }
 
     def __str__(self):
         # Display the social media account and post id.
-        return self.social_media.account_name + ' - Post ID:' + str(self.id)
+        return 'Post ID:' + str(self.id)
 
 # ------------------------------------------------------------------------------
 # PostSchedule model is used to schedule posts for automatic upload.
@@ -353,43 +397,27 @@ class PostSchedule(CommonModel):
 # a video from that script.
 # ------------------------------------------------------------------------------
 class VideoScriptGeneration(CommonModel):
+    DEFUALT_PROMPT = """write a 60-second viral video script about this topic , keep the tone Conversational, direct, and provocative. I want the script to be natural, Speak like a person, not a narrator. Infuse curiosity, skepticism, and boldness. Challenge authority where relevant. Avoid complex jargon—keep it simple and sharp. Keep the script short, use punchy sentences to build energy. Break rhythm with longer lines when explaining complex ideas. Insert pauses with dashes or ellipses for dramatic effect. Aim for a natural, spoken-word cadence. For the title of the script I need A bold, intriguing headline that instantly conveys the topic or controversy it Must feel urgent or provocative to spark curiosity. Example: "The $LIBRA Scandal: Argentina's Presidential Crypto Catastrophe" For the opening hook I need 5 seconds of script that should Start with a provocative, emotionally charged line. Leverage curiosity, controversy, or shock value. Use cultural or financial buzzwords like "classic crypto pump-and-dump". Example: "Argentina's president is facing impeachment calls... after what looks like a classic crypto pump-and-dump." The main body of our script needs to Use the 'THEREFORE, BUT' framework where we should have context , conflict, insight. Context should Set the stage with familiar, relatable information. Conflict should Introduce an unexpected twist or challenge. Insight should Deliver a compelling explanation or key insight. Maintain a natural, conversational tone. Vary sentence length to create rhythm. Include 3-4 compelling facts or figures. Facts should spark surprise, disbelief, or curiosity. Example: 40,000 investors believed in $LIBRA. The token crashed within days, wiping out millions. Now, impeachment calls are flooding in. Conclude with a powerful, thought-provoking statement. Use language that evokes emotion and leaves viewers pondering the broader implications. Example: "The $LIBRA crash isn’t just Argentina’s problem—it’s a global warning. When hype replaces due diligence, the public pays the price." Include a call to action but Avoid generic commands like "Follow us". Instead, leave viewers with a warning, insight, or challenge. Example: "The future of real estate is fractional, digital, and accessible. Join the movement. Take back the market.". 
+        Please avoid using structural labels such as 'HOOK,' 'OPENING,' 'INTRO,' or phrases like 'here's the lowdown' or 'here's the kicker' in the script. I want the entire script to read as a natural, flowing narrative—just like a clean news article or social media caption. No need to call out sections. Just give me the finished script in paragraph form, maintaining a strong tone, engaging style, and clear storytelling without introducing each part.
+        Directly give me the script and do not include any explanation , we need to just have the script. do not bifurcate the sections of the script your output should be a huge paragraph of script"""
+
     # Field to accept a URL for the blog source if applicable.
-    source = models.URLField(
-        max_length = 300,
-        blank = True,
-        null = True,
-        help_text = "URL of the text source (if available)"
-    )
+    source = models.URLField(max_length = 300, blank = True, null = True, help_text = "URL of the text source (if available)")
     
-    # Field to accept the topic of the blog.
-    topic = models.CharField(
-        max_length = 300,
-    )
+    # Field to accept the topic of the script.
+    topic = models.CharField(max_length = 300,blank = True, null = True)
     
     # Field to accept the main text content or big text from the blog.
-    content = models.TextField(
-        help_text = "Detailed content from the blog"
-    )
+    content = models.TextField(help_text = "Detailed content from the source", blank = True, null = True)
     
     # Field to accept the LLM prompt for generating the video script.
-    llm_prompt = models.TextField(
-        help_text = "Prompt for the LLM to generate a video script"
-    )
+    llm_prompt = models.TextField(help_text = "Prompt for the LLM to generate a video script", blank = True, null = True, default=DEFUALT_PROMPT)
     
     # Field to store the generated video script.
-    generated_video_script = models.TextField(
-        blank = True,
-        null = True,
-        help_text = "The generated video script based on the LLM prompt and text content"
-    )
+    generated_video_script = models.TextField(blank = True, null = True, help_text = "The generated video script based on the LLM prompt and text content")
     
     # Field to store the generated video file.
-    video_file = models.FileField(
-        upload_to = 'video_scripts/',
-        blank = True,
-        null = True,
-        help_text = "Generated video file from the video script"
-    )
+    video_file = models.FileField(upload_to = 'video_scripts/', blank = True, null = True, help_text = "Generated video file from the video script")
     
     # Field to track the processing status of the video script generation and video creation.
     STATUS_CHOICES = (
@@ -398,19 +426,10 @@ class VideoScriptGeneration(CommonModel):
         ('completed', 'Completed'),
         ('failed', 'Failed'),
     )
-    status = models.CharField(
-        max_length = 20,
-        choices = STATUS_CHOICES,
-        default = 'pending',
-        help_text = "Processing status"
-    )
+    status = models.CharField(max_length = 20, choices = STATUS_CHOICES, default = 'pending', help_text = "Processing status")
     
     # Field to store error messages in case the generation process fails.
-    error_message = models.TextField(
-        blank = True,
-        null = True,
-        help_text = "Error message if processing fails"
-    )
+    error_message = models.TextField(blank = True, null = True, help_text = "Error message if processing fails")
 
     admin_meta = {
         'list_display': ['topic', 'status', 'created_at', 'updated_at'],
@@ -446,8 +465,8 @@ class VideoScriptGeneration(CommonModel):
             
             # Construct a combined prompt using the blog topic, content, and the LLM prompt provided.
             combined_prompt = (
-                f"Blog Topic: {self.topic}\n"
-                f"Blog Content: {self.content}\n"
+                f"Topic: {self.topic}\n"
+                f"Content: {self.content}\n"
                 f"LLM Prompt: {self.llm_prompt}\n"
                 "Generate a detailed video script based on the above information."
             )
@@ -526,6 +545,7 @@ class VideoScriptGeneration(CommonModel):
             "generated_video_script": generated_script,
             "video_file": video_file_path,
         }
+
 
 
 

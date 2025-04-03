@@ -100,6 +100,8 @@ class JsonEditorWidget(widgets.Widget):
 
 class GenericStackedAdmin(TabularInline):
     extra = 1
+    tab = True
+    
     # This method ensures the field order is correct for inlines as well
     def get_formset(self, request, obj=None, **kwargs):
         formset         = super().get_formset(request, obj, **kwargs)
