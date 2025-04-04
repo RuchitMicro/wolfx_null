@@ -1,0 +1,68 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        // ------------------------------------------------------------------------------
+        // Django Server Debug Configuration
+        // ------------------------------------------------------------------------------
+        {
+            "name": "Python Debugger: Django",
+            "type": "debugpy",
+            "request": "launch",
+            "args": [
+                "runserver",
+                "0.0.0.0:8000"
+            ],
+            "django": true,
+            "autoStartBrowser": false,
+            "program": "${workspaceFolder}/manage.py",
+            "console": "integratedTerminal"
+        },
+        // ------------------------------------------------------------------------------
+        // Celery Worker Debug Configuration
+        // ------------------------------------------------------------------------------
+        {
+            "name": "Python Debugger: Celery Worker",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "celery",      // Specifies that we are running the celery module
+            "args": [
+                "-A", "wolfx_null",  // Replace with your actual project name
+                "worker",
+                "-l",
+                "info"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false
+        },
+        // ------------------------------------------------------------------------------
+        // Celery Beat Debug Configuration
+        // ------------------------------------------------------------------------------
+        {
+            "name": "Python Debugger: Celery Beat",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "celery",      // Specifies that we are running the celery module
+            "args": [
+                "-A", "wolfx_null",  // Replace with your actual project name
+                "beat",
+                "-l",
+                "info"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Run Django + Celery",
+            "configurations": [
+                "Python Debugger: Django",
+                "Python Debugger: Celery Worker",
+                "Python Debugger: Celery Beat"
+            ]
+        }
+    ]
+}
